@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <netinet/in.h>
+#include <sys/wait.h>
 
 #define MAX_MSG_LEN 120
 #define MAX_MSG_BUF_LEN (MAX_MSG_LEN + 100)
@@ -21,6 +22,16 @@ void sigint_handler(int sig)
 {
 	printf("[srv] SIGINT is coming!\n");
 	sigint_flag = 1;
+}
+
+//install SIGCHLD
+void sigchld_handler(int sig)
+{
+	pid_t pid_chld;
+	int stat;
+	while((pid_chld = waitpid(-1, &stat, WNOHANG)) > 0);
+	// output which child process is terminated
+	printf("[srv] child process %d is terminated.\n", pid_chld);
 }
 
 void server_process(int conn_fd)
@@ -67,11 +78,18 @@ int main(int argc, char *argv[])
 	#endif
 
 	//install SIGINT
-	struct sigaction act;
-	act.sa_flags = 0;
-	act.sa_handler = sigint_handler;
-	sigemptyset(&act.sa_mask);
-	sigaction(SIGINT, &act, NULL);
+	struct sigaction act_sigint;
+	act_sigint.sa_flags = 0;
+	act_sigint.sa_handler = sigint_handler;
+	sigemptyset(&act_sigint.sa_mask);
+	sigaction(SIGINT, &act_sigint, NULL);
+
+	//install SIGCHLD
+	struct sigaction act_sigchld;
+	act_sigchld.sa_flags = 0;
+	act_sigchld.sa_handler = sigchld_handler;
+	sigemptyset(&act_sigchld.sa_mask);
+	sigaction(SIGCHLD, &act_sigchld, NULL);
 
 	//Create listen socket
 	int listen_fd = socket(PF_INET, SOCK_STREAM, 0); // PF_INET:IPv4, SOCK_STREAM:TCP
