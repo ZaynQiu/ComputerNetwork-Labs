@@ -10,49 +10,67 @@
 
 #define MAX_MSG_LEN 120
 #define MAX_MSG_BUF_LEN (MAX_MSG_LEN + 100)
-#define DEBUG 0
+#define DEBUG 1
+
+char *ip_address, *port, *client_id;
 
 // client process
 void client_process(int conn_fd)
 {
 	// client receive data from stdin and output to stdout, then send data to server which end with '\n\0'
-	char recv_buf[MAX_MSG_BUF_LEN], send_buf[MAX_MSG_BUF_LEN];
+	char recv_payload[MAX_MSG_BUF_LEN], recv_vcd[2];
+	char send_buf[MAX_MSG_BUF_LEN], send_cid[2], send_payload[MAX_MSG_BUF_LEN];
 	int recv_len, send_len;
 	while (1)
 	{
-		memset(recv_buf, 0, sizeof(recv_buf));
+		memset(recv_payload, 0, sizeof(recv_payload));
+		memset(recv_vcd, 0, sizeof(recv_vcd));
 		memset(send_buf, 0, sizeof(send_buf));
 
 		// receive send_data from stdin using fgets
-		fgets(send_buf, sizeof(send_buf), stdin);
-		send_len = strlen(send_buf);
+		fgets(send_payload, sizeof(send_payload), stdin);
 
 		// output to stdout
-		printf("[ECH_RQT]%s", send_buf);
+		printf("[cli](%d)[cid](%s)[ECH_RQT] %s", getpid(), client_id, send_payload);
 
 		// judge whether to exit
-		if (strcmp(send_buf, "EXIT\n") == 0)
+		if (strcmp(send_payload, "EXIT\n") == 0)
 		{
 			break;
 		}
 		
-		// send data to server with '\n\0' added in the end
-        // send_buf[send_len] = '\n';
-        send_buf[++send_len] = '\0';
-        // send_len++;
+		// add client_id to send_buf in the first 2 bytes
+		short cid = htons(atoi(client_id));
+		memcpy(send_buf, &cid, 2);
+		#if DEBUG
+		//output send_buf
+		printf("DEBUG:cid=%d\n", atoi(client_id));
+		printf("DEBUG: SEND_BUF:%sSEND_BUF_END\n", send_buf);
+		#endif
+		memcpy(send_buf+2, send_payload, strlen(send_payload));
+		send_len = strlen(send_buf);
+		// send data to server with '\n\0' in the end
+        // send_buf[++send_len] = '\0';
+
+		#if DEBUG
+		//output send_buf
+		printf("DEBUG: SEND_BUF:%sSEND_BUF_END\n", send_buf);
+		#endif
+
 		if (write(conn_fd, send_buf, send_len) < 0)
 		{
 			perror("send error");
 		}
 
 		// receive data from server
-		if (read(conn_fd, recv_buf, sizeof(recv_buf)) < 0)
+		if (read(conn_fd, recv_vcd, 2) < 0)
 		{
-			perror("recv error");
+			perror("recv recv_vcd");
 		}
 		else
 		{
-			printf("[ECH_REP]%s", recv_buf);
+			read(conn_fd, recv_payload, sizeof(recv_payload));
+			printf("[cli](%d)[vcd](%s)[ECHO_REP] %s", getpid(), recv_vcd, recv_payload);
 		}
 	}
 }
@@ -60,8 +78,9 @@ void client_process(int conn_fd)
 int main(int argc, char *argv[])
 {
 	// arg1=ip_address arg2=port
-	char *ip_address = argv[1];
-	char *port = argv[2];
+	ip_address = argv[1];
+	port = argv[2];
+	client_id = argv[3];
 
 #if DEBUG
 	printf("ip_address=%s\n", ip_address);
@@ -84,7 +103,7 @@ int main(int argc, char *argv[])
 	{
 		perror("connect error");
 	}
-	printf("[cli] server[%s:%s] is connected!\n", ip_address, port);
+	printf("[cli](%d)[srv_sa][%s:%s] Server is connected!\n", getpid(), ip_address, port);
 
 	// send/recv
 	client_process(conn_fd);
@@ -94,7 +113,7 @@ int main(int argc, char *argv[])
 	{
 		perror("close error");
 	}
-	printf("[cli] conn_fd is closed!\n");
-	printf("[cli] client is to return!");
+	printf("[cli](%d) conn_fd is closed!\n", getpid());
+	printf("[cli](%d) Client is to return!", getpid());
 	return 0;
 }
