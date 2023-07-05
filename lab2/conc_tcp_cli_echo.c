@@ -40,22 +40,15 @@ void client_process(int conn_fd)
 		}
 		
 		// add client_id to send_buf in the first 2 bytes
-		short cid = htons(atoi(client_id));
+		unsigned short cid = htons(atoi(client_id));
 		memcpy(send_buf, &cid, 2);
 		#if DEBUG
-		//output send_buf
 		printf("DEBUG:cid=%d\n", atoi(client_id));
-		printf("DEBUG: SEND_BUF:%sSEND_BUF_END\n", send_buf);
 		#endif
 		memcpy(send_buf+2, send_payload, strlen(send_payload));
 		send_len = strlen(send_buf);
 		// send data to server with '\n\0' in the end
         // send_buf[++send_len] = '\0';
-
-		#if DEBUG
-		//output send_buf
-		printf("DEBUG: SEND_BUF:%sSEND_BUF_END\n", send_buf);
-		#endif
 
 		if (write(conn_fd, send_buf, send_len) < 0)
 		{
@@ -63,14 +56,19 @@ void client_process(int conn_fd)
 		}
 
 		// receive data from server
-		if (read(conn_fd, recv_vcd, 2) < 0)
+		if (read(conn_fd, recv_vcd, sizeof(recv_vcd)) < 0)
 		{
 			perror("recv recv_vcd");
 		}
 		else
 		{
 			read(conn_fd, recv_payload, sizeof(recv_payload));
-			printf("[cli](%d)[vcd](%s)[ECHO_REP] %s", getpid(), recv_vcd, recv_payload);
+			unsigned short vcd = (unsigned short)(recv_vcd[1] << 8) + (unsigned short)recv_vcd[0];
+			vcd = ntohs(vcd);
+			#if DEBUG
+			printf("received VCD:%d\n", vcd);
+			#endif
+			printf("[cli](%d)[vcd](%d)[ECHO_REP] %s", getpid(), vcd, recv_payload);
 		}
 	}
 }

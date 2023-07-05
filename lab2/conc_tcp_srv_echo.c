@@ -12,7 +12,7 @@
 
 #define MAX_MSG_LEN 120
 #define MAX_MSG_BUF_LEN (MAX_MSG_LEN + 100)
-#define DEBUG 0
+#define DEBUG 1
 
 char *ip_address, *port, *veri_code;
 
@@ -59,15 +59,20 @@ void server_process(int conn_fd)
 			break;
 		} 
 		read(conn_fd, recv_payload, sizeof(recv_payload));
-		int client_id;
-		client_id = (recv_cid[0] << 8) + recv_cid[1];
+		unsigned short client_id = (unsigned short)(recv_cid[1] << 8) + (unsigned short)recv_cid[0];
 		client_id = ntohs(client_id);
+		#if DEBUG
+		printf("received CID:%d\n", client_id);
+		#endif
 
 		// output to stdout
 		printf("[chd](%d)[cid](%d)[ECH_RQT] %s", getpid(), client_id, recv_payload);
 		
 		// add veri_code to send_buf in the first 2 bytes
-		short vcd = ntohs(atoi(veri_code));
+		unsigned short vcd = htons(atoi(veri_code));
+		#if DEBUG
+		printf("sending VCD:%d\n", vcd);
+		#endif
 		memcpy(send_buf, &vcd, 2);
 		memcpy(send_buf+2, recv_payload, strlen(recv_payload));
 		send_len = strlen(send_buf);
