@@ -57,6 +57,11 @@ void server_process(int conn_fd)
 
 		#if DEBUG
 		printf("Server before read data from client.\n");
+		//print the client info
+		struct sockaddr_in client_addr;
+		socklen_t client_addr_len = sizeof(client_addr);
+		getpeername(conn_fd, (struct sockaddr *)&client_addr, &client_addr_len);
+		printf("[srv_pid](%d)[client_pip](%s)[cpn](%d)\n", getpid(), inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 		#endif
 
 		// read data from client
@@ -139,7 +144,8 @@ int main(int argc, char *argv[])
 	//Create listen socket
 	int listen_fd = socket(PF_INET, SOCK_STREAM, 0); // PF_INET:IPv4, SOCK_STREAM:TCP
 	struct sockaddr_in srv_address;
-	memset(&srv_address, 0, sizeof(srv_address));
+	// memset(&srv_address, 0, sizeof(srv_address));
+	bzero(&srv_address, sizeof(srv_address));
 	srv_address.sin_family = AF_INET; // AF_INET:IPv4
 	if(inet_pton(AF_INET, ip_address, &srv_address.sin_addr.s_addr) < 0) // ip_address
 	{
@@ -159,6 +165,7 @@ int main(int argc, char *argv[])
 	int conn_fd;
 	struct sockaddr_in cli_address;
 	socklen_t cli_address_len;
+	bzero(&cli_address, sizeof(cli_address));
 
 	// Major Cycle
 	while(!sigint_flag)
@@ -176,9 +183,8 @@ int main(int argc, char *argv[])
 			}
 		}
 		#if DEBUG
-		//print the client info
-		printf("cli_address_len = %d\n", cli_address_len);
-		printf("cli_address.sin_addr.s_addr = %d\n", cli_address.sin_addr.s_addr);
+		//print the client ip and port
+		printf("Client IP: %s\tport: %d\n", inet_ntoa(cli_address.sin_addr), ntohs(cli_address.sin_port));
 		#endif
 
 		// connected
@@ -230,10 +236,10 @@ int main(int argc, char *argv[])
 	}
 
 	//close
-	if(close(listen_fd) < 0)
-	{
-		perror("close error");
-	}
+	// if(close(listen_fd) < 0)
+	// {
+	// 	perror("close error");
+	// }
 	// printf("[srv] listen_fd is closed!\n");
 	// printf("[srv] server is to return!");
     return 0;
