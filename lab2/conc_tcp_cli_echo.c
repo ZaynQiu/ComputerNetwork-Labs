@@ -55,6 +55,10 @@ void client_process(int conn_fd)
 			perror("send error");
 		}
 
+		#if DEBUG
+		printf("Send successfully!\n");
+		#endif
+
 		// receive data from server
 		if (read(conn_fd, recv_vcd, sizeof(recv_vcd)) < 0)
 		{
@@ -68,7 +72,7 @@ void client_process(int conn_fd)
 			#if DEBUG
 			printf("received VCD:%d\n", vcd);
 			#endif
-			printf("[cli](%d)[vcd](%d)[ECHO_REP] %s", getpid(), vcd, recv_payload);
+			printf("[cli](%d)[vcd](%d)[ECH_REP] %s", getpid(), vcd, recv_payload);
 		}
 	}
 }
@@ -101,7 +105,7 @@ int main(int argc, char *argv[])
 	{
 		perror("connect error");
 	}
-	printf("[cli](%d)[srv_sa][%s:%s] Server is connected!\n", getpid(), ip_address, port);
+	printf("[cli](%d)[srv_sa](%s:%s) Server is connected!\n", getpid(), ip_address, port);
 
 	// send/recv
 	client_process(conn_fd);

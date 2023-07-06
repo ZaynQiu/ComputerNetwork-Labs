@@ -20,16 +20,17 @@ int main(int argc, char *argv[]) {
   ip_address = argv[1];
   port = argv[2];
   client_id = argv[3];
-
+	printf("%d\n",htons(934));
   char recv_payload[MAX_MSG_BUF_LEN], recv_vcd[2];
   char send_buf[MAX_MSG_BUF_LEN], send_cid[2], send_payload[MAX_MSG_BUF_LEN];
   int recv_len, send_len;
-
-  short cid = htons(atoi(client_id));
-
-	// print cid
-	  printf("DEBUG:cid=%d\n", cid);
-	// transfer cid into 2 bytes
+  memset(send_buf, 0, sizeof(send_buf));
+//   fgets(send_payload, sizeof(send_payload), stdin);
+  unsigned short cid2 = atoi(client_id);
+  unsigned short cid = htons(cid2);
+  // print cid
+  printf("DEBUG:cid=%d\n", cid);
+  // transfer cid into 2 bytes
 	
   memcpy(send_buf, &cid, sizeof(cid));
 //   printf("DEBUG:cid=%d\n", atoi(client_id));

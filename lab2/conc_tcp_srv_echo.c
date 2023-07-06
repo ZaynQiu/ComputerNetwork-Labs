@@ -12,6 +12,7 @@
 
 #define MAX_MSG_LEN 120
 #define MAX_MSG_BUF_LEN (MAX_MSG_LEN + 100)
+#define BACKLOG 5
 #define DEBUG 1
 
 char *ip_address, *port, *veri_code;
@@ -27,11 +28,12 @@ void sigint_handler(int sig)
 //install SIGCHLD
 void sigchld_handler(int sig)
 {
-	pid_t pid_chld;
-	int stat;
-	while((pid_chld = waitpid(-1, &stat, WNOHANG)) > 0);
-	// output which child process is terminated
-	printf("[srv](%d)[chd](%d) Child has terminated!\n", getpid(), pid_chld);
+	int status;
+	pid_t pid;
+	while((pid = waitpid(-1, &status, WNOHANG)) > 0)
+	{
+		printf("[srv](%d)[chd](%d) Child has terminated!\n", getpid(), pid);
+	}
 }
 
 //install SIGPIPE
@@ -53,14 +55,29 @@ void server_process(int conn_fd)
 		memset(send_buf, 0, sizeof(send_buf));
 		memset(recv_cid, 0, sizeof(recv_cid));
 
+		#if DEBUG
+		printf("Server before read data from client.\n");
+		#endif
+
 		// read data from client
-		if(read(conn_fd, recv_cid, sizeof(recv_cid)) == 0)
+		int read_status = read(conn_fd, recv_cid, sizeof(recv_cid));
+		#if DEBUG
+		printf ("read_status = %d\n", read_status);
+		#endif
+		
+		if(read_status == 0) // client closed
 		{
 			break;
-		} 
+		}
+		else if(read_status < 0) // read error
+		{
+			perror("read error");
+			break;
+		}
 		read(conn_fd, recv_payload, sizeof(recv_payload));
 		unsigned short client_id = (unsigned short)(recv_cid[1] << 8) + (unsigned short)recv_cid[0];
 		client_id = ntohs(client_id);
+
 		#if DEBUG
 		printf("received CID:%d\n", client_id);
 		#endif
@@ -135,20 +152,19 @@ int main(int argc, char *argv[])
 	}
 
 	// listen
-	listen(listen_fd, 2); // 2rd para: backlog
-	// printf("[srv] server[%s:%s][%s] is initializing!\n", ip_address, port, veri_code);
-
+	listen(listen_fd, BACKLOG);
+	printf("[srv](%d)[srv_sa](%s:%s)[vcd](%s) Server has initialized!\n", getpid(), ip_address, port, veri_code);
+	
 	// Create conn_fd
 	int conn_fd;
 	struct sockaddr_in cli_address;
-	socklen_t cli_address_len = sizeof(cli_address);
-
-	printf("[srv](%d)[srv_sa](%s:%s)[vcd](%s) Server has initialized!\n", getpid(), ip_address, port, veri_code);
+	socklen_t cli_address_len;
 
 	// Major Cycle
 	while(!sigint_flag)
-	{
+	{	
 		// Minor Cycle
+		cli_address_len = sizeof(cli_address);
 		if((conn_fd = accept(listen_fd, (struct sockaddr *)&cli_address, &cli_address_len)) < 0)
 		{
 			if(errno == EINTR)
@@ -159,6 +175,11 @@ int main(int argc, char *argv[])
 				break;
 			}
 		}
+		#if DEBUG
+		//print the client info
+		printf("cli_address_len = %d\n", cli_address_len);
+		printf("cli_address.sin_addr.s_addr = %d\n", cli_address.sin_addr.s_addr);
+		#endif
 
 		// connected
 		printf("[srv](%d)[cli_sa](%s:%d) Client is accepted!\n", getpid(), inet_ntoa(cli_address.sin_addr), ntohs(cli_address.sin_port));
@@ -172,12 +193,13 @@ int main(int argc, char *argv[])
 		}
 		else if(pid_chld == 0) // child process
 		{
+			printf("[chd](%d)[ppid](%d) Child process is created!\n", getpid(), getppid());
+
 			// close listen_fd
 			if(close(listen_fd) < 0)
 			{
 				perror("close error");
 			}
-			printf("[chd](%d)[ppid](%d) Child process is created!\n", getpid(), getppid());
 
 			// handle the client
 			server_process(conn_fd);
@@ -192,12 +214,18 @@ int main(int argc, char *argv[])
 			}
 			printf("[chd](%d)[ppid](%d) connfd is closed!\n", getpid(), getppid());
 			printf("[chd](%d)[ppid](%d) Child process is to return!\n", getpid(), getppid());
-		}
 
-		// close conn_fd
-		if(close(conn_fd) < 0)
+			return 0;
+		}
+		else if(pid_chld > 0) // parent process
 		{
-			perror("close error");
+			// close conn_fd
+			if(close(conn_fd) < 0)
+			{
+				perror("close error");
+			}
+
+			continue;
 		}
 	}
 
