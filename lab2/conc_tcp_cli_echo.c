@@ -10,7 +10,7 @@
 
 #define MAX_MSG_LEN 120
 #define MAX_MSG_BUF_LEN (MAX_MSG_LEN + 100)
-#define DEBUG 1
+#define DEBUG 0
 
 char *ip_address, *port, *client_id;
 
@@ -46,7 +46,7 @@ void client_process(int conn_fd)
 		printf("DEBUG:cid=%d\n", atoi(client_id));
 		#endif
 		memcpy(send_buf+2, send_payload, strlen(send_payload));
-		send_len = strlen(send_buf);
+		send_len = strlen(send_payload)+2;
 		// send data to server with '\n\0' in the end
         send_buf[send_len++] = '\0';
 		#if DEBUG

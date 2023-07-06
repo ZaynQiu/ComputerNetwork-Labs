@@ -13,7 +13,7 @@
 #define MAX_MSG_LEN 120
 #define MAX_MSG_BUF_LEN (MAX_MSG_LEN + 100)
 #define BACKLOG 5
-#define DEBUG 1
+#define DEBUG 0
 
 char *ip_address, *port, *veri_code;
 
@@ -97,9 +97,9 @@ void server_process(int conn_fd)
 		#endif
 		memcpy(send_buf, &vcd, 2);
 		memcpy(send_buf+2, recv_payload, strlen(recv_payload));
-		send_len = strlen(send_buf);
+		send_len = strlen(recv_payload)+2;
 		// send data payload to client
-		if(write(conn_fd, send_buf, strlen(send_buf)) < 0)
+		if(write(conn_fd, send_buf, send_len) < 0)
 		{
 			perror("send error");
 		}
@@ -236,10 +236,10 @@ int main(int argc, char *argv[])
 	}
 
 	//close
-	// if(close(listen_fd) < 0)
-	// {
-	// 	perror("close error");
-	// }
+	if(close(listen_fd) < 0)
+	{
+		perror("close error");
+	}
 	// printf("[srv] listen_fd is closed!\n");
 	// printf("[srv] server is to return!");
     return 0;
