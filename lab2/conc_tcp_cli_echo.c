@@ -48,7 +48,12 @@ void client_process(int conn_fd)
 		memcpy(send_buf+2, send_payload, strlen(send_payload));
 		send_len = strlen(send_buf);
 		// send data to server with '\n\0' in the end
-        // send_buf[++send_len] = '\0';
+        send_buf[send_len++] = '\0';
+		#if DEBUG
+		//print sendlen and send_payload	
+		printf("DEBUG:send_len=%d\n", send_len);
+		printf("DEBUG:send_payload=%sDONE\n", send_payload);
+		#endif
 
 		if (write(conn_fd, send_buf, send_len) < 0)
 		{
